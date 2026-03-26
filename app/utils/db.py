@@ -3,32 +3,29 @@ import pandas as pd
 from pathlib import Path
 import streamlit as st
 
-# BASE_DIR: /mount/src/panorama-rochas
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-# AJUSTE AQUI: Use os nomes EXATOS das pastas que aparecem no seu GitHub
-DB_PATH = BASE_DIR / "dados" / "ouro" / "panorama.duckdb"
-
-@st.cache_resource
 def get_connection():
-    if not DB_PATH.exists():
-        # Se não achar, vamos listar as pastas para ter certeza do nome
-        st.error("🚨 Banco de dados não encontrado!")
-        st.write(f"Caminho tentado: `{DB_PATH}`")
-        
-        # Diagnóstico de pastas
-        pastas_na_raiz = [f.name for f in BASE_DIR.iterdir() if f.is_dir()]
-        st.write("Pastas que o Python está vendo na raiz:", pastas_na_raiz)
+    # Caminho absoluto da raiz no Streamlit Cloud
+    # utils -> app -> raiz
+    raiz = Path(__file__).resolve().parent.parent.parent
+    
+    # Use o nome EXATO que aparece no VS Code (provavelmente 'data')
+    db_path = raiz / "data" / "gold" / "panorama.duckdb"
+
+    if not db_path.exists():
+        st.error(f"🚨 Arquivo não encontrado!")
+        st.write(f"O Python tentou ler: `{db_path}`")
+        # Listagem para você ver o nome real da pasta sem tradução
+        st.write("Conteúdo real da raiz:", [f.name for f in raiz.iterdir()])
         return None
-        
-    return duckdb.connect(str(DB_PATH), read_only=True)
+
+    return duckdb.connect(str(db_path), read_only=True)
 
 def query(sql: str) -> pd.DataFrame:
     con = get_connection()
-    if con is None:
-        return pd.DataFrame()
-    try:
-        return con.execute(sql).df()
-    except Exception as e:
-        st.error(f"Erro na query: {e}")
-        return pd.DataFrame()
+    if con:
+        try:
+            return con.execute(sql).df()
+        except Exception as e:
+            st.error(f"Erro na query: {e}")
+            return pd.DataFrame()
+    return pd.DataFrame()
