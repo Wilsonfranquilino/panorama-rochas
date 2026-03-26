@@ -2,23 +2,29 @@ import duckdb
 import pandas as pd
 from pathlib import Path
 import streamlit as st
+import os
 
 def get_connection():
-    # Caminho absoluto da raiz no Streamlit Cloud
-    # utils -> app -> raiz
-    raiz = Path(__file__).resolve().parent.parent.parent
+    # Caminho base do Streamlit Cloud
+    raiz = Path("/mount/src/panorama-rochas")
     
-    # Use o nome EXATO que aparece no VS Code (provavelmente 'data')
-    db_path = raiz / "data" / "gold" / "panorama.duckdb"
-
-    if not db_path.exists():
-        st.error(f"🚨 Arquivo não encontrado!")
-        st.write(f"O Python tentou ler: `{db_path}`")
-        # Listagem para você ver o nome real da pasta sem tradução
-        st.write("Conteúdo real da raiz:", [f.name for f in raiz.iterdir()])
+    # Vamos listar TUDO o que existe na raiz para matar a dúvida dos nomes
+    st.write("### 📂 Diagnóstico de Estrutura")
+    arquivos_reais = []
+    for root, dirs, files in os.walk(raiz):
+        for name in files:
+            if name.endswith(".duckdb"):
+                arquivos_reais.append(os.path.join(root, name))
+    
+    if arquivos_reais:
+        st.success(f"✅ Encontrei o banco em: `{arquivos_reais[0]}`")
+        db_path = arquivos_reais[0]
+    else:
+        st.error("❌ Nenhum arquivo .duckdb foi encontrado no projeto!")
+        st.write("Arquivos na raiz:", os.listdir(raiz))
         return None
 
-    return duckdb.connect(str(db_path), read_only=True)
+    return duckdb.connect(db_path, read_only=True)
 
 def query(sql: str) -> pd.DataFrame:
     con = get_connection()
