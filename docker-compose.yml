@@ -1,19 +1,23 @@
 services:
 
   ingestor:
-    build: ./ingestor
+    build:
+      context: .
+      dockerfile: ingestor/Dockerfile
     container_name: panorama_ingestor
     volumes:
       - ./data:/data
     env_file: .env
     environment:
       - BRONZE_PATH=/data/bronze
-    command: python main.py
+    command: python ingestor/main.py
     networks:
       - panorama
 
   transformer:
-    build: ./transformer
+    build:
+      context: .
+      dockerfile: transformer/Dockerfile
     container_name: panorama_transformer
     volumes:
       - ./data:/data
@@ -24,12 +28,14 @@ services:
     depends_on:
       ingestor:
         condition: service_completed_successfully
-    command: python main.py
+    command: python transformer/main.py
     networks:
       - panorama
 
   app:
-    build: ./app
+    build:
+      context: .
+      dockerfile: app/Dockerfile
     container_name: panorama_app
     volumes:
       - ./data:/data
@@ -41,7 +47,7 @@ services:
     depends_on:
       transformer:
         condition: service_completed_successfully
-    command: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0
     networks:
       - panorama
 
