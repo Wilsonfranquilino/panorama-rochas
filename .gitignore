@@ -1,0 +1,7 @@
+.env
+data/bronze/
+data/silver/
+__pycache__/
+*.pyc
+.DS_Store
+*.log

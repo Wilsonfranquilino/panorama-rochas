@@ -1,0 +1,29 @@
+=== PANORAMA ROCHAS NATURAIS — POC ===
+
+PASSO 1: Configure sua chave da API
+  - Renomeie o arquivo ".env.example" para ".env"
+  - Abra o .env e substitua "sua_chave_aqui" pela sua ANTHROPIC_API_KEY
+
+PASSO 2: Rode o projeto
+  No terminal (PowerShell ou CMD), dentro desta pasta:
+
+  docker-compose up --build
+
+PASSO 3: Acesse no navegador
+  http://localhost:8501
+
+Para parar:
+  docker-compose down
+
+Para rodar de novo (sem rebuild):
+  docker-compose up
+
+FONTES DE DADOS:
+  - COMEX Stat (MDIC) — exportações por NCM
+  - IBGE SIDRA        — produção industrial mineral  
+  - BCB SGS           — câmbio USD/BRL histórico
+  - ANM               — produção mineral (mock)
+  - Centrorochas      — boletins PDF (mock)
+
+OBS: Se COMEX ou BCB estiverem fora do ar, o sistema usa dados
+     simulados automaticamente. O pipeline não quebra.

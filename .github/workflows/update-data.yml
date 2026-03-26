@@ -1,0 +1,49 @@
+name: Atualizar dados do Panorama
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'  # Todo dia 1 do mês às 06:00 UTC
+  workflow_dispatch:       # Permite rodar manualmente no GitHub
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências do ingestor
+        run: pip install -r ingestor/requirements.txt
+
+      - name: Instalar dependências do transformer
+        run: pip install -r transformer/requirements.txt
+
+      - name: Rodar ingestor
+        env:
+          BRONZE_PATH: ./data/bronze
+        run: |
+          mkdir -p data/bronze/comex data/bronze/ibge data/bronze/bcb data/bronze/anm data/bronze/centrorochas
+          cd ingestor && python main.py
+
+      - name: Rodar transformer
+        env:
+          BRONZE_PATH: ./data/bronze
+          SILVER_PATH: ./data/silver
+          GOLD_PATH: ./data/gold
+        run: |
+          mkdir -p data/silver data/gold
+          cd transformer && python main.py
+
+      - name: Commit dados atualizados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/gold/panorama.duckdb
+          git diff --staged --quiet || git commit -m "dados: atualização automática $(date +'%Y-%m')"
+          git push

@@ -1,0 +1,50 @@
+services:
+
+  ingestor:
+    build: ./ingestor
+    container_name: panorama_ingestor
+    volumes:
+      - ./data:/data
+    env_file: .env
+    environment:
+      - BRONZE_PATH=/data/bronze
+    command: python main.py
+    networks:
+      - panorama
+
+  transformer:
+    build: ./transformer
+    container_name: panorama_transformer
+    volumes:
+      - ./data:/data
+    environment:
+      - BRONZE_PATH=/data/bronze
+      - SILVER_PATH=/data/silver
+      - GOLD_PATH=/data/gold
+    depends_on:
+      ingestor:
+        condition: service_completed_successfully
+    command: python main.py
+    networks:
+      - panorama
+
+  app:
+    build: ./app
+    container_name: panorama_app
+    volumes:
+      - ./data:/data
+    env_file: .env
+    environment:
+      - GOLD_PATH=/data/gold
+    ports:
+      - "8501:8501"
+    depends_on:
+      transformer:
+        condition: service_completed_successfully
+    command: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+    networks:
+      - panorama
+
+networks:
+  panorama:
+    driver: bridge
