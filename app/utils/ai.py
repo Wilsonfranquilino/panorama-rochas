@@ -1,6 +1,8 @@
 """Utilitário de chat com Claude API com contexto dos dados Gold."""
 import os
+import streamlit as st
 from utils.db import query
+from anthropic import Anthropic
 
 SYSTEM_PROMPT = """Você é um analista especialista no setor de rochas naturais do Brasil.
 Você tem acesso a dados reais de exportação do COMEX Stat, produção da ANM, câmbio do BCB e boletins da Centrorochas.
@@ -23,6 +25,7 @@ def obter_contexto() -> str:
             WHERE ano = (SELECT MAX(ano) FROM gold_ranking_destinos)
             AND rank <= 3
         """)
+        
         ctx = f"""
 - Último ano: {tot['ano'].iloc[0]}
 - Exportações: US$ {tot['total_fob_usd'].iloc[0]/1e9:.2f} bilhões
@@ -32,28 +35,36 @@ def obter_contexto() -> str:
 """
         return ctx
     except Exception:
-        return "Dados em processamento."
+        return "Dados em processamento ou estrutura de tabelas não encontrada."
 
 def chat(mensagem: str, historico: list) -> str:
-    """Envia mensagem para Claude — inicializa cliente aqui, não no módulo."""
-    import anthropic
-
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    """Envia mensagem para Claude usando a chave dos Secrets ou env."""
+    
+    # Tenta pegar a chave do Streamlit Cloud primeiro, se não existir, pega do .env
+    api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+    
     if not api_key:
-        return "Configure a variável ANTHROPIC_API_KEY no arquivo .env para usar o chat com IA."
+        return "Erro: Chave de API não configurada nos Secrets do Streamlit."
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        # Inicialização limpa (sem proxies ou argumentos extras)
+        client = Anthropic(api_key=api_key)
+        
         contexto = obter_contexto()
         system = SYSTEM_PROMPT.format(contexto=contexto)
-        messages = historico + [{"role": "user", "content": mensagem}]
+        
+        # Garante que as mensagens estejam no formato que a Anthropic exige
+        messages = []
+        for msg in historico:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user", "content": mensagem})
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1000,
+            model="claude-3-sonnet-20240229",
+            max_tokens=1024,
             system=system,
             messages=messages,
         )
         return response.content[0].text
     except Exception as e:
-        return f"Erro ao conectar com a IA: {e}"
+        return f"Erro na conexão com a IA: {str(e)}"
