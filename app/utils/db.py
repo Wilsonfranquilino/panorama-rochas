@@ -5,7 +5,10 @@ import pandas as pd
 from pathlib import Path
 import streamlit as st
 
-GOLD_PATH = Path(os.getenv("GOLD_PATH", "/data/gold"))
+# Pega o caminho de onde o db.py está e sobe os níveis necessários
+# db.py está em app/utils/, então subimos 2 níveis para chegar na raiz do projeto
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+GOLD_PATH = BASE_DIR / "data" / "gold"
 
 @st.cache_resource
 def get_connection():
