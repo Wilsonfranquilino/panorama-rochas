@@ -1,20 +1,29 @@
-"""Utilitário de conexão com DuckDB Gold."""
-import os
 import duckdb
 import pandas as pd
 from pathlib import Path
 import streamlit as st
 
-# Pega o caminho de onde o db.py está e sobe os níveis necessários
-# db.py está em app/utils/, então subimos 2 níveis para chegar na raiz do projeto
+# Caminho dinâmico para a raiz do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-GOLD_PATH = BASE_DIR / "data" / "gold"
+DB_PATH = BASE_DIR / "data" / "gold" / "panorama.duckdb"
 
 @st.cache_resource
 def get_connection():
-    db = GOLD_PATH / "panorama.duckdb"
-    return duckdb.connect(str(db), read_only=True)
+    if not DB_PATH.exists():
+        st.error(f"Arquivo não encontrado em: {DB_PATH}")
+        return None
+    return duckdb.connect(str(DB_PATH), read_only=True)
 
 def query(sql: str) -> pd.DataFrame:
     con = get_connection()
-    return con.execute(sql).df()
+    if con:
+        try:
+            return con.execute(sql).df()
+        except Exception as e:
+            # RAIO-X: Se der erro, mostramos o que TEM dentro do banco
+            st.error(f"Erro na consulta: {e}")
+            tabelas_reais = con.execute("PRAGMA show_tables").df()
+            st.write("### 🔍 Tabelas encontradas no banco:")
+            st.dataframe(tabelas_reais)
+            return pd.DataFrame() # Retorna vazio para não travar tudo
+    return pd.DataFrame()
