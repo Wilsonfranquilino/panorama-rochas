@@ -1,15 +1,12 @@
-"""
-Métrica 1: IVM — Índice de Vulnerabilidade de Mercado
-Combina HHI de destinos + HHI de produtos + sazonalidade
-Escala 0 a 1 (quanto maior, mais vulnerável)
-"""
 import duckdb
-import logging; logger = logging.getLogger(__name__)
+import logging
+
+logger = logging.getLogger(__name__)
 
 def calcular_ivm(con: duckdb.DuckDBPyConnection):
-    logger.info("IVM: calculando índice de vulnerabilidade")
+    logger.info("IVM: calculando índice de vulnerabilidade sobre dados curados")
 
-    # HHI por destino (por ano) — Herfindahl-Hirschman Index
+    # 1. HHI por destino (Mede dependência de países compradores)
     con.execute("""
     CREATE OR REPLACE TABLE metric_hhi_destino AS
     WITH shares AS (
@@ -29,7 +26,7 @@ def calcular_ivm(con: duckdb.DuckDBPyConnection):
     GROUP BY ano
     """)
 
-    # HHI por produto (por ano)
+    # 2. HHI por produto (Mede dependência de NCMs específicos)
     con.execute("""
     CREATE OR REPLACE TABLE metric_hhi_produto AS
     WITH shares AS (
@@ -48,7 +45,7 @@ def calcular_ivm(con: duckdb.DuckDBPyConnection):
     GROUP BY ano
     """)
 
-    # Sazonalidade: desvio padrão dos meses (normalizado)
+    # 3. Sazonalidade (Desvio Padrão Mensal / Média)
     con.execute("""
     CREATE OR REPLACE TABLE metric_sazonalidade AS
     WITH mensais AS (
@@ -63,7 +60,7 @@ def calcular_ivm(con: duckdb.DuckDBPyConnection):
     GROUP BY ano
     """)
 
-    # IVM composto: média ponderada dos três componentes
+    # 4. IVM Final (Ponderado: 50% Destino, 30% Produto, 20% Sazonalidade)
     con.execute("""
     CREATE OR REPLACE TABLE metric_ivm AS
     SELECT
@@ -93,4 +90,4 @@ def calcular_ivm(con: duckdb.DuckDBPyConnection):
     """)
 
     n = con.execute("SELECT COUNT(*) FROM metric_ivm").fetchone()[0]
-    logger.info(f"IVM: calculado para {n} anos")
+    logger.info(f"IVM: calculado para {n} anos com sucesso")

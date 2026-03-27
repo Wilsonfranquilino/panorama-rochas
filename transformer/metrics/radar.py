@@ -1,13 +1,10 @@
-"""
-Métrica 2: Radar de Oportunidades
-Score por país: tamanho do mercado × crescimento × gap Brasil × risco
-"""
 import duckdb
-import logging; logger = logging.getLogger(__name__)
+import logging
 
-# Mercados de referência com potencial estimado (base pública + conhecimento setorial)
+logger = logging.getLogger(__name__)
+
 MERCADOS_REFERENCIA = [
-    {"pais": "Índia",            "mercado_bi": 2.8, "crescimento": 0.12, "risco": 0.3},
+    {"pais": "Índia",           "mercado_bi": 2.8, "crescimento": 0.12, "risco": 0.3},
     {"pais": "Emirados Árabes",  "mercado_bi": 1.9, "crescimento": 0.09, "risco": 0.2},
     {"pais": "Austrália",        "mercado_bi": 1.4, "crescimento": 0.07, "risco": 0.1},
     {"pais": "Canadá",           "mercado_bi": 1.2, "crescimento": 0.05, "risco": 0.1},
@@ -20,9 +17,9 @@ MERCADOS_REFERENCIA = [
 ]
 
 def calcular_radar(con: duckdb.DuckDBPyConnection):
-    logger.info("Radar: calculando oportunidades de mercado")
+    logger.info("Radar: calculando oportunidades com base em dados curados")
 
-    # Participação atual do Brasil em cada mercado (último ano disponível)
+    # 1. Captura a participação real (base curada na Gold)
     con.execute("""
     CREATE OR REPLACE TABLE metric_participacao_atual AS
     SELECT
@@ -33,12 +30,13 @@ def calcular_radar(con: duckdb.DuckDBPyConnection):
     GROUP BY pais_nome
     """)
 
-    # Monta tabela de referência de mercados
+    # 2. Converte a lista de referência para SQL
     mercados_vals = ",".join([
         f"('{m['pais']}', {m['mercado_bi']}, {m['crescimento']}, {m['risco']})"
         for m in MERCADOS_REFERENCIA
     ])
 
+    # 3. Cálculo do Score e Status
     con.execute(f"""
     CREATE OR REPLACE TABLE metric_radar_oportunidades AS
     WITH mercados AS (
@@ -58,7 +56,7 @@ def calcular_radar(con: duckdb.DuckDBPyConnection):
         ROUND(
             (m.mercado_bi_usd * 0.4) *
             (1 + m.crescimento_anual * 0.3) *
-            (1 - COALESCE(a.fob_brasil_usd,0) / NULLIF(m.mercado_bi_usd * 1e9, 0)) *
+            (1 - (COALESCE(a.fob_brasil_usd, 0) / NULLIF(m.mercado_bi_usd * 1e9, 0))) *
             (1 - m.risco_geopolitico * 0.3)
         , 3) AS score_oportunidade,
         CASE
@@ -73,4 +71,4 @@ def calcular_radar(con: duckdb.DuckDBPyConnection):
     """)
 
     n = con.execute("SELECT COUNT(*) FROM metric_radar_oportunidades").fetchone()[0]
-    logger.info(f"Radar: {n} mercados avaliados")
+    logger.info(f"Radar: {n} mercados analisados com sucesso")

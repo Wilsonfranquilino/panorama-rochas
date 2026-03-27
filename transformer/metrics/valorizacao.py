@@ -1,13 +1,13 @@
-"""
-Métrica 3: Monitor de Valorização do Produto
-Acompanha evolução do preço médio por m² — bruto vs beneficiado
-"""
 import duckdb
-import logging; logger = logging.getLogger(__name__)
+import logging
+
+logger = logging.getLogger(__name__)
 
 def calcular_valorizacao(con: duckdb.DuckDBPyConnection):
-    logger.info("Valorização: calculando monitor de upgrading")
+    logger.info("Valorização: calculando monitor de upgrading sobre dados curados")
 
+    # 1. Base de Categorização (Bruto vs Beneficiado)
+    # A gold_preco_produto já vem com os totais de volume e FOB agregados
     con.execute("""
     CREATE OR REPLACE TABLE metric_valorizacao AS
     WITH base AS (
@@ -18,7 +18,7 @@ def calcular_valorizacao(con: duckdb.DuckDBPyConnection):
             fob_usd,
             preco_m2_usd,
             CASE
-                WHEN produto ILIKE '%bruto%' OR produto ILIKE '%raw%'
+                WHEN produto ILIKE '%bruto%' OR produto ILIKE '%raw%' OR produto ILIKE '%bloco%'
                     THEN 'Bruto'
                 ELSE 'Beneficiado'
             END AS categoria
@@ -31,7 +31,7 @@ def calcular_valorizacao(con: duckdb.DuckDBPyConnection):
         volume_m2,
         fob_usd,
         preco_m2_usd,
-        -- variação YoY
+        -- Variação YoY (Comparação com o mesmo mês do ano anterior)
         preco_m2_usd - LAG(preco_m2_usd, 12) OVER (
             PARTITION BY produto ORDER BY ano_mes
         ) AS variacao_yoy_usd,
@@ -46,20 +46,23 @@ def calcular_valorizacao(con: duckdb.DuckDBPyConnection):
     ORDER BY ano_mes, produto
     """)
 
-    # Razão beneficiado/bruto por período
+    # 2. Upgrading Ratio (Eficiência Industrial)
+    # Mede quantas vezes o beneficiado vale mais que o bruto no período
     con.execute("""
     CREATE OR REPLACE TABLE metric_upgrading_ratio AS
     SELECT
         ano_mes,
-        MAX(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) AS preco_beneficiado,
-        MAX(CASE WHEN categoria = 'Bruto'        THEN preco_m2_usd END) AS preco_bruto,
+        -- Usamos AVG para ter o preço médio da categoria no mês, caso haja múltiplos produtos
+        AVG(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) AS preco_beneficiado,
+        AVG(CASE WHEN categoria = 'Bruto'        THEN preco_m2_usd END) AS preco_bruto,
         ROUND(
-            MAX(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) /
-            NULLIF(MAX(CASE WHEN categoria = 'Bruto' THEN preco_m2_usd END), 0)
+            AVG(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) /
+            NULLIF(AVG(CASE WHEN categoria = 'Bruto' THEN preco_m2_usd END), 0)
         , 2) AS ratio_upgrading
     FROM metric_valorizacao
     GROUP BY ano_mes
     ORDER BY ano_mes
     """)
 
-    logger.info("Valorização: monitor calculado")
+    n = con.execute("SELECT COUNT(*) FROM metric_upgrading_ratio").fetchone()[0]
+    logger.info(f"Valorização: monitor calculado para {n} períodos")
