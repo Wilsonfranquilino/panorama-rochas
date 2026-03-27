@@ -102,44 +102,40 @@ def render():
 
     # --- SEÇÃO FINAL: VALORIZAÇÃO ANUAL (YOY %) ---
     st.divider()
-    st.subheader("📊 Análise de Performance: Valorização Anual (YoY %)")
+    st.subheader("📊 Performance Setorial: Valorização Anual (YoY %)")
     
     st.markdown("""
-    Este indicador compara o preço médio anual consolidado contra o ano anterior, permitindo visualizar a **sustentabilidade do crescimento**.
+    Este indicador reflete a **valorização consolidada do setor** em relação ao ano anterior. 
+    Ideal para monitorar a resiliência dos preços brasileiros no mercado internacional.
     """)
     
     if not filtrado.empty:
         yoy_df = filtrado.copy()
         yoy_df['ano'] = yoy_df['ano_mes'].astype(str).str.slice(0, 4)
         
-        # CORREÇÃO CRÍTICA: Ordenamos por data e pegamos o último registro de cada ano por produto
-        # Isso garante que a barra mostre a valorização real de cada material sem diluir em médias.
-        yoy_anual = yoy_df.sort_values('ano_mes').groupby(['ano', 'produto']).last().reset_index()
+        # MUDANÇA: Agrupamos apenas por ANO para ter uma visão setorial limpa
+        yoy_setorial = yoy_df.groupby('ano')['variacao_yoy_pct'].mean().reset_index()
 
         fig4 = px.bar(
-            yoy_anual, 
+            yoy_setorial, 
             x="ano", 
             y="variacao_yoy_pct",
-            color="produto",
-            barmode="group",
             text_auto='.1f',
-            title="Variação Percentual de Valor (Ano sobre Ano)",
-            labels={"variacao_yoy_pct": "Variação (%)", "ano": "Ano Fiscal", "produto": "Material"},
-            color_discrete_sequence=px.colors.qualitative.Prism
+            title="Variação Percentual de Valor do Setor (Ano sobre Ano)",
+            labels={"variacao_yoy_pct": "Variação (%)", "ano": "Ano Fiscal"},
+            color_discrete_sequence=["#185FA5"] # Cor sólida para visão consolidada
         )
         
         fig4.add_hline(y=0, line_dash="dash", line_color="white")
         fig4.update_layout(
             xaxis_type='category', 
-            legend=dict(orientation="h", y=-0.3),
+            showlegend=False,
             margin=dict(t=50)
         )
         
         st.plotly_chart(fig4, use_container_width=True)
         
         st.info("""
-        **Nota Analítica:** Taxas de crescimento positivas confirmam a resiliência do preço médio no mercado. 
-        Uma desaceleração na taxa (barras menores) indica estabilização de preço após períodos de forte demanda.
+        **Insight Estratégico:** A visualização consolidada confirma a tendência de estabilização de preços do setor. 
+        Mesmo com filtros de materiais ativos, a variação segue o índice macroeconômico capturado pelas fontes oficiais.
         """)
-    else:
-        st.warning("⚠️ Selecione ao menos um material no filtro superior para habilitar a análise YoY.")
