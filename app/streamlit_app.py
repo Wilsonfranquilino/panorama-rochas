@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
  
-from pages.home        import render as home
+import home
 from pages.ivm         import render as ivm
 from pages.radar       import render as radar
 from pages.valorizacao import render as valorizacao
