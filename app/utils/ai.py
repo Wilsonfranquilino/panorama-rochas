@@ -4,7 +4,6 @@ import httpx
 from utils.db import query
 from anthropic import Anthropic
 
-# Mantemos seu System Prompt que está excelente
 SYSTEM_PROMPT = """Você é um analista especialista no setor de rochas naturais do Brasil.
 Você tem acesso a dados reais de exportação do COMEX Stat, produção da ANM, câmbio do BCB e boletins da Centrorochas.
 
@@ -38,34 +37,33 @@ def obter_contexto() -> str:
         return "Dados em processamento ou estrutura de tabelas não encontrada."
 
 def chat(mensagem: str, historico: list) -> str:
-    # Busca a chave com prioridade para o Streamlit Cloud
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
     
     if not api_key:
         return "Erro: Chave de API não configurada nos Secrets do Streamlit."
 
     try:
-        # A SOLUÇÃO: Forçamos um cliente HTTP sem proxies
-        http_client = httpx.Client(proxies={}) 
-        
-        client = Anthropic(
-            api_key=api_key,
-            http_client=http_client  # Isso aqui mata o erro de 'proxies'
-        )
-        
-        contexto = obter_contexto()
-        system = SYSTEM_PROMPT.format(contexto=contexto)
-        
-        # Formatação das mensagens
-        messages = [{"role": msg["role"], "content": msg["content"]} for msg in historico]
-        messages.append({"role": "user", "content": mensagem})
+        # CORREÇÃO AQUI: Criamos o httpx.Client sem passar 'proxies' na inicialização da Anthropic
+        # O httpx.Client por padrão já não usa proxies a menos que especificado
+        with httpx.Client() as http_client:
+            client = Anthropic(
+                api_key=api_key,
+                base_url="https://api.anthropic.com", # Força a URL base padrão
+                http_client=http_client
+            )
+            
+            contexto = obter_contexto()
+            system = SYSTEM_PROMPT.format(contexto=contexto)
+            
+            messages = [{"role": msg["role"], "content": msg["content"]} for msg in historico]
+            messages.append({"role": "user", "content": mensagem})
 
-        response = client.messages.create(
-            model="claude-3-haiku-20240307", # Haiku é mais rápido para a PoC
-            max_tokens=1024,
-            system=system,
-            messages=messages,
-        )
-        return response.content[0].text
+            response = client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=1024,
+                system=system,
+                messages=messages,
+            )
+            return response.content[0].text
     except Exception as e:
         return f"Erro na conexão com a IA: {str(e)}"
