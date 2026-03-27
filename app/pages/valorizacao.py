@@ -93,30 +93,33 @@ def render():
             st.plotly_chart(fig3, use_container_width=True)
  
     # Variação YoY
-    # Variação YoY - Versão ANUAL (Lógica Corrigida)
-    st.subheader("📊 Evolução Anual da Valorização (YoY %)")
+    # --- BLOCO CORRIGIDO: VARIAÇÃO ANUAL REAL ---
+    st.subheader("📊 Valorização Anual Consolidada (YoY %)")
     
-    # Pegamos os dados e garantimos que estamos olhando para o fechamento do Ano
-    yoy_anual = filtrado[filtrado["variacao_yoy_pct"].notna()].copy()
-    
-    if not yoy_anual.empty:
-        # 1. FILTRO DE PRODUTO (Para matar a poluição de 50 barras juntas)
-        prod_sel = st.selectbox("Selecione o Produto para ver a variação anual:", selecionados)
-        df_plot = yoy_anual[yoy_anual["produto"] == prod_sel]
+    # 1. Filtro de Produto para limpar a poluição
+    prod_yoy = st.selectbox("Selecione o Produto para análise:", selecionados, key="sb_yoy_final")
+    yoy_prod = filtrado[filtrado["produto"] == prod_yoy].copy()
 
-        # 2. GRÁFICO DE BARRAS SIMPLES POR ANO
+    if not yoy_prod.empty:
+        # 2. A MÁGICA: Extraímos o ANO e agrupamos. 
+        # Isso mata as 12 barras repetidas e deixa só UMA por ano.
+        yoy_prod['ano'] = yoy_prod['ano_mes'].str.slice(0, 4)
+        yoy_anual = yoy_prod.groupby('ano')['variacao_yoy_pct'].mean().reset_index()
+
+        # 3. Gráfico de Barras Limpo
         fig4 = px.bar(
-            df_plot, 
-            x="ano_mes", # Aqui ele vai mostrar os anos disponíveis
+            yoy_anual, 
+            x="ano", 
             y="variacao_yoy_pct",
             text_auto='.1f',
-            title=f"Variação de Preço Anual: {prod_sel}",
-            labels={"variacao_yoy_pct":"Variação (%)", "ano_mes":"Período"},
-            color_discrete_sequence=['#185FA5'] 
+            title=f"Variação Anual Real: {prod_yoy}",
+            labels={"variacao_yoy_pct": "Crescimento (%)", "ano": "Ano"},
+            color_discrete_sequence=['#185FA5']
         )
         
         fig4.add_hline(y=0, line_dash="dash", line_color="white")
-        fig4.update_layout(xaxis_tickangle=-45)
+        fig4.update_layout(xaxis_type='category') # Garante que os anos fiquem espaçados
+        
         st.plotly_chart(fig4, use_container_width=True)
-
-        st.caption("O gráfico mostra quanto o preço médio subiu ou desceu em relação ao ano anterior.")
+        
+        st.info(f"Nota: Dados consolidados por ano para eliminar a repetição mensal da base original.")
