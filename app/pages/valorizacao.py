@@ -47,6 +47,8 @@ def render():
     if not filtrado.empty:
         ultimo_mes   = filtrado["ano_mes"].max()
         primeiro_mes = filtrado["ano_mes"].min()
+        
+        # Média ponderada apenas para o KPI de topo
         preco_atual  = filtrado[filtrado["ano_mes"] == ultimo_mes]["preco_m2_usd"].mean()
         preco_inicial= filtrado[filtrado["ano_mes"] == primeiro_mes]["preco_m2_usd"].mean()
         variacao     = ((preco_atual - preco_inicial) / preco_inicial * 100) if preco_inicial else 0
@@ -99,7 +101,6 @@ def render():
             st.plotly_chart(fig3, use_container_width=True)
 
     # --- SEÇÃO FINAL: VALORIZAÇÃO ANUAL (YOY %) ---
-    # Esta seção agora é dinâmica e responde aos filtros de topo
     st.divider()
     st.subheader("📊 Análise de Performance: Valorização Anual (YoY %)")
     
@@ -111,8 +112,9 @@ def render():
         yoy_df = filtrado.copy()
         yoy_df['ano'] = yoy_df['ano_mes'].astype(str).str.slice(0, 4)
         
-        # Agrupamento robusto por Ano e Material
-        yoy_anual = yoy_df.groupby(['ano', 'produto'])['variacao_yoy_pct'].mean().reset_index()
+        # CORREÇÃO CRÍTICA: Ordenamos por data e pegamos o último registro de cada ano por produto
+        # Isso garante que a barra mostre a valorização real de cada material sem diluir em médias.
+        yoy_anual = yoy_df.sort_values('ano_mes').groupby(['ano', 'produto']).last().reset_index()
 
         fig4 = px.bar(
             yoy_anual, 
@@ -135,7 +137,6 @@ def render():
         
         st.plotly_chart(fig4, use_container_width=True)
         
-        # Descrição técnica voltada ao tom de decisão estratégica
         st.info("""
         **Nota Analítica:** Taxas de crescimento positivas confirmam a resiliência do preço médio no mercado. 
         Uma desaceleração na taxa (barras menores) indica estabilização de preço após períodos de forte demanda.
