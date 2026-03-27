@@ -6,10 +6,18 @@ from utils.db import query
  
 def render():
     st.title("Monitor de Valorização do Produto")
-    st.markdown("""
-    Acompanha a evolução do **preço médio por m²** por produto.
-    O **ratio upgrading** mostra a relação entre beneficiado e bruto ao longo do tempo.
-    """)
+    # --- Guia Estratégico de Valorização (Padrão Home) ---
+    with st.expander("💡 Como interpretar a Valorização e o Upgrading", expanded=False):
+        st.markdown("""
+        Esta página monitora se o setor está conseguindo vender rochas por um preço melhor ou se está perdendo margem.
+        
+        * **Preço Médio (US$/m²):** Acompanhe a linha de tendência por produto. Subidas indicam maior aceitação no mercado de luxo ou escassez de materiais específicos.
+        * **Volume por Categoria:** Compara o volume de rochas **Brutas vs. Beneficiadas**. O objetivo é ver a cor azul escura (Beneficiado) crescer sobre a clara.
+        * **Ratio Upgrading:** É o indicador de "pulo do gato". Ele mostra quantas vezes o produto beneficiado é mais caro que o bruto. 
+            * *Ratio alto:* O beneficiamento está agregando muito valor.
+            * *Ratio baixo:* O custo de processar não está sendo repassado ao preço final.
+        * **Variação YoY (Year-over-Year):** Compara o preço do mês atual com o mesmo mês do ano anterior, eliminando distorções sazonais.
+        """)
  
     val   = query("SELECT * FROM metric_valorizacao ORDER BY ano_mes")
     ratio = query("SELECT * FROM metric_upgrading_ratio ORDER BY ano_mes")
