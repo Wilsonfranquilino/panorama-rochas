@@ -1,14 +1,14 @@
-"""Utilitário de chat com Claude API com contexto dos dados Gold."""
 import os
 import streamlit as st
+import httpx
 from utils.db import query
 from anthropic import Anthropic
 
+# Mantemos seu System Prompt que está excelente
 SYSTEM_PROMPT = """Você é um analista especialista no setor de rochas naturais do Brasil.
 Você tem acesso a dados reais de exportação do COMEX Stat, produção da ANM, câmbio do BCB e boletins da Centrorochas.
 
 Responda sempre em português, de forma clara e estratégica.
-Quando relevante, cite números concretos dos dados.
 Foque em insights acionáveis para exportadores e formuladores de política setorial.
 
 Contexto atual dos dados:
@@ -38,29 +38,30 @@ def obter_contexto() -> str:
         return "Dados em processamento ou estrutura de tabelas não encontrada."
 
 def chat(mensagem: str, historico: list) -> str:
-    """Envia mensagem para Claude usando a chave dos Secrets ou env."""
-    
-    # Tenta pegar a chave do Streamlit Cloud primeiro, se não existir, pega do .env
+    # Busca a chave com prioridade para o Streamlit Cloud
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
     
     if not api_key:
         return "Erro: Chave de API não configurada nos Secrets do Streamlit."
 
     try:
-        # Inicialização limpa (sem proxies ou argumentos extras)
-        client = Anthropic(api_key=api_key)
+        # A SOLUÇÃO: Forçamos um cliente HTTP sem proxies
+        http_client = httpx.Client(proxies={}) 
+        
+        client = Anthropic(
+            api_key=api_key,
+            http_client=http_client  # Isso aqui mata o erro de 'proxies'
+        )
         
         contexto = obter_contexto()
         system = SYSTEM_PROMPT.format(contexto=contexto)
         
-        # Garante que as mensagens estejam no formato que a Anthropic exige
-        messages = []
-        for msg in historico:
-            messages.append({"role": msg["role"], "content": msg["content"]})
+        # Formatação das mensagens
+        messages = [{"role": msg["role"], "content": msg["content"]} for msg in historico]
         messages.append({"role": "user", "content": mensagem})
 
         response = client.messages.create(
-            model="claude-3-sonnet-20240229",
+            model="claude-3-haiku-20240307", # Haiku é mais rápido para a PoC
             max_tokens=1024,
             system=system,
             messages=messages,
