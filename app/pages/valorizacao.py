@@ -93,37 +93,30 @@ def render():
             st.plotly_chart(fig3, use_container_width=True)
  
     # Variação YoY
-    # Variação YoY - Versão "Limpa" e Sazonal
-    st.subheader("📊 Confronto de Sazonalidade (YoY %)")
+    # Variação YoY - Versão ANUAL (Lógica Corrigida)
+    st.subheader("📊 Evolução Anual da Valorização (YoY %)")
     
-    yoy = filtrado[filtrado["variacao_yoy_pct"].notna()].copy()
+    # Pegamos os dados e garantimos que estamos olhando para o fechamento do Ano
+    yoy_anual = filtrado[filtrado["variacao_yoy_pct"].notna()].copy()
     
-    if not yoy.empty:
-        # Tratamento para separar Mês e Ano para o gráfico de ciclos
-        yoy['data_dt'] = pd.to_datetime(yoy['ano_mes'], format='%Y-%m')
-        yoy['mes_num'] = yoy['data_dt'].dt.month
-        yoy['ano_str'] = yoy['data_dt'].dt.year.astype(str)
+    if not yoy_anual.empty:
+        # 1. FILTRO DE PRODUTO (Para matar a poluição de 50 barras juntas)
+        prod_sel = st.selectbox("Selecione o Produto para ver a variação anual:", selecionados)
+        df_plot = yoy_anual[yoy_anual["produto"] == prod_sel]
 
-        # 1. FILTRO DE PRODUTO ÚNICO (Essencial para tirar a poluição)
-        # Se deixar todos os produtos juntos, o gráfico morre novamente.
-        prod_yoy = st.selectbox("Selecione o Produto para análise sazonal:", selecionados, key="sb_yoy")
-        yoy_final = yoy[yoy["produto"] == prod_yoy]
-
-        # 2. GRÁFICO DE LINHAS SOBREPOSTAS
-        # Comparamos a performance de cada mês contra o ano anterior
-        fig4 = px.line(
-            yoy_final, 
-            x="mes_num", 
-            y="variacao_yoy_pct", 
-            color="ano_str",
-            markers=True,
-            title=f"Variação YoY Mensal: {prod_yoy}",
-            labels={"variacao_yoy_pct":"Var YoY (%)", "mes_num":"Mês do Ano", "ano_str":"Ano"},
-            color_discrete_sequence=px.colors.qualitative.Bold
+        # 2. GRÁFICO DE BARRAS SIMPLES POR ANO
+        fig4 = px.bar(
+            df_plot, 
+            x="ano_mes", # Aqui ele vai mostrar os anos disponíveis
+            y="variacao_yoy_pct",
+            text_auto='.1f',
+            title=f"Variação de Preço Anual: {prod_sel}",
+            labels={"variacao_yoy_pct":"Variação (%)", "ano_mes":"Período"},
+            color_discrete_sequence=['#185FA5'] 
         )
         
-        fig4.add_hline(y=0, line_dash="dash", line_color="gray")
-        fig4.update_layout(xaxis=dict(tickmode='linear', tick0=1, dtick=1))
+        fig4.add_hline(y=0, line_dash="dash", line_color="white")
+        fig4.update_layout(xaxis_tickangle=-45)
         st.plotly_chart(fig4, use_container_width=True)
 
-        st.caption(f"Cada linha representa um ano. Se a linha de 2025 está acima de 0, significa que o preço naquele mês foi maior que o do mesmo mês de 2024.")
+        st.caption("O gráfico mostra quanto o preço médio subiu ou desceu em relação ao ano anterior.")
