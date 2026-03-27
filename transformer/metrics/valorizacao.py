@@ -7,37 +7,30 @@ def calcular_valorizacao(con: duckdb.DuckDBPyConnection):
     logger.info("Valorização: Iniciando cálculo individualizado por produto e categoria.")
 
     # --- PASSO 1: Base de Categorização e Variação YoY ---
-    # CORREÇÃO: Usamos PARTITION BY produto para que a variação de um material não suje a do outro.
     con.execute("""
     CREATE OR REPLACE TABLE metric_valorizacao AS
     WITH base AS (
         SELECT
             ano_mes,
             produto,
-            volume_m2,
-            fob_usd,
-            preco_m2_usd,
+            -- Forçamos a média por produto/mês para garantir que o preço seja único por material
+            AVG(volume_m2) as volume_m2,
+            AVG(fob_usd) as fob_usd,
+            AVG(preco_m2_usd) as preco_m2_usd,
             CASE
                 WHEN (produto ILIKE '%bruto%' OR produto ILIKE '%raw%' OR produto ILIKE '%bloco%')
                     THEN 'Bruto'
                 ELSE 'Beneficiado'
             END AS categoria
         FROM gold_preco_produto
+        GROUP BY ano_mes, produto -- <--- ESTA LINHA É A CHAVE DA INDIVIDUALIDADE
     )
     SELECT
         *,
-        -- Cálculo de variação USD absoluto
-        preco_m2_usd - LAG(preco_m2_usd, 12) OVER (
-            PARTITION BY produto ORDER BY ano_mes
-        ) AS variacao_yoy_usd,
-        
-        -- Cálculo de variação Percentual (%) individual por produto
+        preco_m2_usd - LAG(preco_m2_usd, 12) OVER (PARTITION BY produto ORDER BY ano_mes) AS variacao_yoy_usd,
         ROUND(
-            (preco_m2_usd - LAG(preco_m2_usd, 12) OVER (
-                PARTITION BY produto ORDER BY ano_mes
-            )) * 100.0 / NULLIF(LAG(preco_m2_usd, 12) OVER (
-                PARTITION BY produto ORDER BY ano_mes
-            ), 0)
+            (preco_m2_usd - LAG(preco_m2_usd, 12) OVER (PARTITION BY produto ORDER BY ano_mes)) * 100.0 / 
+            NULLIF(LAG(preco_m2_usd, 12) OVER (PARTITION BY produto ORDER BY ano_mes), 0)
         , 2) AS variacao_yoy_pct
     FROM base
     ORDER BY ano_mes, produto
