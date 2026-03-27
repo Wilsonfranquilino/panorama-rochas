@@ -6,6 +6,16 @@ from utils.db import query
  
 def render():
     st.title("Índice de Vulnerabilidade de Mercado (IVM)")
+    # --- Guia Estratégico IVM (Seguindo o padrão da Home) ---
+    with st.expander("💡 Como utilizar o IVM para decisão estratégica", expanded=False):
+        st.markdown("""
+        O IVM é o termômetro de risco do setor. Ele indica se o faturamento está seguro ou "nas mãos" de poucos parceiros.
+        
+        * **Velocímetro (Gauge):** Mostra o risco atual. Se estiver na zona laranja/vermelha, o setor está vulnerável a crises políticas ou econômicas nos países compradores.
+        * **Evolução dos Componentes:** Observe qual linha está subindo. Se o *HHI Destino* sobe, estamos ficando dependentes de poucos países. Se o *HHI Produto* sobe, estamos vendendo poucos tipos de rocha.
+        * **Treemap e Mix:** Identifique visualmente quais países dominam a pauta. O objetivo estratégico é "pulverizar" as vendas para garantir estabilidade.
+        * **Benchmarks:** Compare o Brasil com concorrentes como Itália e Espanha. Estar abaixo deles significa maior resiliência de mercado.
+        """)
     st.markdown("""
     O IVM combina três dimensões para medir o **risco estrutural** das exportações:
     - **50%** Concentração geográfica (HHI de destinos)

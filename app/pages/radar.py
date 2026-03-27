@@ -6,11 +6,18 @@ from utils.db import query
  
 def render():
     st.title("Radar de Oportunidades")
-    st.markdown("""
-    Score por mercado: **tamanho** × **crescimento** × **gap Brasil** × **(1 − risco)**
- 
-    Quanto maior o score, maior o potencial inexplorado pelo Brasil.
-    """)
+    # --- Guia Estratégico Radar (Padrão Home) ---
+    with st.expander("💡 Como interpretar o Radar para identificar novos mercados", expanded=False):
+        st.markdown("""
+        O Radar cruza dados de mercado global com a nossa presença atual para encontrar onde o Brasil está "deixando dinheiro na mesa".
+        
+        * **Mapa de Oportunidades (Bolhas):** * **Eixo X (Crescimento):** Indica se o país está comprando mais rochas a cada ano.
+            * **Eixo Y (Tamanho):** Indica o volume financeiro total daquele mercado.
+            * **Cor da Bolha:** Foca nos mercados **Laranjas (Não explorados)** e **Marrons (Subexplorados)** — eles são o seu alvo principal.
+        * **Ranking de Score:** Quanto maior o Score, maior a viabilidade de entrada. Ele já desconta o risco geopolítico para evitar "ciladas".
+        * **Gráfico de Gap:** Mostra a distância entre o que exportamos hoje e o que poderíamos exportar se atingíssemos 8% de participação naquele país.
+        * **Tabela de Dados:** Use para verificar o risco geopolítico específico de cada nação antes de planejar uma missão comercial.
+        """)
  
     radar = query("SELECT * FROM metric_radar_oportunidades ORDER BY score_oportunidade DESC")
  

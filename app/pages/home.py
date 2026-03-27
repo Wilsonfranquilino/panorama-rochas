@@ -6,6 +6,16 @@ from utils.db import query
  
 def render():
     st.title("Panorama das Rochas Naturais — Brasil")
+    # --- Guia Estratégico de Comparação ---
+    with st.expander("💡 Como interpretar esta Comparação para decisão", expanded=False):
+        st.markdown("""
+        Esta página permite analisar a evolução real do setor comparando dois períodos distintos.
+        
+        * **FOB Base vs. Comparação:** Identifique se o faturamento total cresceu ou retraiu em termos nominais.
+        * **Comparação por Granularidade:** Use para ver quais mercados (países) ou produtos (rochas) ganharam ou perderam relevância física no gráfico de barras.
+        * **Variação Percentual:** As barras **verdes** indicam expansão e novos mercados. As barras **laranjas** mostram onde o setor está perdendo fôlego.
+        * **Tabela de Auditoria:** Use para extrair os valores exatos em milhões de dólares para relatórios técnicos.
+        """)
     st.caption("Dados: COMEX Stat · IBGE · BCB · ANM · Centrorochas")
  
     # --- Filtros globais ---

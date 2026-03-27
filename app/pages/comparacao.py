@@ -7,6 +7,15 @@ from utils.db import query
 def render():
     st.title("Comparação Ano a Ano")
     st.caption("Compare períodos, países e produtos lado a lado")
+    # --- Guia Estratégico de Comparação ---
+    with st.expander("🔍 Como interpretar o crescimento/queda", expanded=False):
+        st.markdown("""
+        Esta análise permite identificar a resiliência do setor frente a crises ou janelas de oportunidade.
+        
+        * **Variação % (Verde vs Vermelho):** Foque nos extremos. Crescimentos acima de 10% em mercados maduros são vitórias estratégicas. Quedas acentuadas em mercados chave exigem investigação imediata (ex: barreiras tarifárias ou novos concorrentes).
+        * **Efeito Volume vs Efeito Preço:** Se o FOB subiu mas o volume não acompanhou, o lucro veio de câmbio ou valorização da pedra. Se o FOB caiu com volume estável, houve deflação no mercado ou perda de poder de negociação.
+        * **Top 10 Variações:** Use este gráfico para descobrir novos mercados "estrela" que estão dobrando de tamanho em relação ao ano anterior.
+        """)
  
     col1, col2, col3 = st.columns(3)
     anos = query("SELECT DISTINCT ano FROM gold_exportacoes ORDER BY ano")["ano"].tolist()
