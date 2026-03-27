@@ -43,28 +43,25 @@ def calcular_valorizacao(con: duckdb.DuckDBPyConnection):
     ORDER BY ano_mes, produto
     """)
 
-    # --- PASSO 2: Upgrading Ratio (Eficiência Industrial por Material) ---
-    # CORREÇÃO CRÍTICA: Adicionado 'produto' no GROUP BY. 
-    # Isso impede a média global que estava deixando todos os materiais iguais.
+    # --- PASSO 2: Upgrading Ratio (Eficiência Industrial Consolidada) ---
+    # CORREÇÃO DEFINITIVA: Calculamos a média por categoria por mês para ter o Ratio Real
     con.execute("""
     CREATE OR REPLACE TABLE metric_upgrading_ratio AS
+    WITH medias AS (
+        SELECT
+            ano_mes,
+            AVG(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) AS preco_beneficiado,
+            AVG(CASE WHEN categoria = 'Bruto'        THEN preco_m2_usd END) AS preco_bruto
+        FROM metric_valorizacao
+        GROUP BY ano_mes
+    )
     SELECT
         ano_mes,
-        produto, 
-        -- Média do preço beneficiado para este produto específico no mês
-        AVG(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) AS preco_beneficiado,
-        
-        -- Média do preço bruto para este produto específico no mês
-        AVG(CASE WHEN categoria = 'Bruto'        THEN preco_m2_usd END) AS preco_bruto,
-        
-        -- Ratio real: Quantas vezes o beneficiado é mais caro que o bruto para ESTE material
-        ROUND(
-            AVG(CASE WHEN categoria = 'Beneficiado' THEN preco_m2_usd END) /
-            NULLIF(AVG(CASE WHEN categoria = 'Bruto' THEN preco_m2_usd END), 0)
-        , 2) AS ratio_upgrading
-    FROM metric_valorizacao
-    GROUP BY ano_mes, produto
-    ORDER BY ano_mes, produto
+        preco_beneficiado,
+        preco_bruto,
+        ROUND(preco_beneficiado / NULLIF(preco_bruto, 0), 2) AS ratio_upgrading
+    FROM medias
+    ORDER BY ano_mes
     """)
 
     # Verificação de saída para o log
